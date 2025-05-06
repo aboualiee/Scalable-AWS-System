@@ -12,7 +12,7 @@ echo "Creating application directory..."
 mkdir -p /app
 cd /app
 
-# Download app files with retry logic
+# Download app files with a retry logic
 echo "Downloading application files..."
 for i in {1..3}; do
   aws s3 cp s3://student-performance-app-files/app.py /app/app.py && break

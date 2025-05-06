@@ -57,4 +57,4 @@ For secure SSH access to EC2 instances (when needed for troubleshooting), the pr
 ssh -i /path/to/studentanalyst_keypair.pem ec2-user@instance-public-ip
 ```
 
-Note that instances in private subnets are not directly accessible via SSH from the internet. Access would require using a bastion host or AWS Systems Manager Session Manager.
+Note that instances in private subnets are not directly accessible via SSH from the internet. Access would require using a bastion host or AWS Systems Manager Session Manager
