@@ -9,161 +9,118 @@ This **Scalable AWS System** is a **high-availability platform** deployed on AWS
 
 ## Features
 
-- **Interactive Dashboard**: Analyze student performance data with visualizations such as scatter plots, heatmaps, and histograms.
-- **AWS Integration**: Deployed on AWS with a custom VPC, auto-scaling groups, and an application load balancer.
-- **Fault Tolerance**: High availability with a minimum of two EC2 instances and health monitoring.
-- **Scalability**: Auto-scaling based on CPU usage to handle traffic spikes.
-- **Data Analysis**: Supports analysis of numerical and categorical variables, missing data visualization, and outlier detection.
+- **AWS Integration**: Deployed on AWS with a custom VPC, EC2 Auto Scaling, and an Application Load Balancer.
+- **Data Upload + S3 Fallback**: Upload CSV datasets or load defaults from an S3 bucket.
+- **Fault Tolerance**: Ensures high availability with EC2 instances and health monitoring.
+- **Scalability**: Automatically scales based on traffic demands.
+- **Interactive Dashboard**: Visualize student performance through scatter plots, heatmaps, and histograms.
+- **Dynamic Filtering**: Apply adaptive filters for focused data exploration.
+- **Performance Categorization**: Classify students into performance tiers based on exam scores.
+- **Missing Data Summary**: Automatically detect and visualize missing data in the dashboard.
+- **Correlation Insights**: Display top 3 factors most correlated with exam scores.
+- **Advanced Visualizations**: Explore relationships between factors using scatter plots, heatmaps, and trendlines.
+
 
 ## Architecture
 
 ![AWS Student Analytics System Architecture](images/aws-student-analytics-architecture.png)  
 *Fig 1: AWS Student Analytics System Architecture*
+*Diagram designed using draw.io*
 
 ### Architecture Components:
-The system architecture utilizes the following AWS components, with names configured for each service:
+The system architecture utilizes the following AWS components:
 
 1. **Custom VPC**:
    - VPC CIDR block: `10.0.0.0/16`
    - Public and private subnets for security and isolation.
 
 2. **Application Load Balancer (ALB)**:
-   - **Name**: **StudentAnalyticsLB**
-   - Routes incoming HTTP/HTTPS traffic to healthy EC2 instances in private subnets.
-   - Health checks configured on port `8501`.
+   - Name: `StudentAnalyticsLB`
+   - Routes HTTP/HTTPS traffic to healthy EC2 instances.
+   - Health checks on port `8501`.
 
 3. **Auto Scaling Group (ASG)**:
-   - **Auto Scaling Group Name**: **StudentAnalyticsASG**
-   - Maintains a desired capacity of EC2 instances based on CPU utilization.
-   - Minimum instances: 2  
-   - Maximum instances: 4
+   - Name: `StudentAnalyticsASG`
+   - Maintains 2–4 EC2 instances based on CPU usage.
 
 4. **EC2 Instances**:
-   - **EC2 Instance Name**: **StudentAnalyticsInstance**
-   - Instances are launched in private subnets and run the Streamlit application.
-   - Instances are automatically managed by the auto-scaling group.
+   - Name: `StudentAnalyticsInstance`
+   - Private subnets, run the Streamlit app, auto-managed.
+   - **User Data Script**: Downloads the `app.py` and `StudentPerformanceFactors.csv` dataset from the S3 bucket at instance startup and runs the Streamlit app.
 
 5. **S3 Bucket**:
-   - **Bucket Name**: **student-performance-app-files**
-   - Stores application code and data files (e.g., `app.py`, `StudentPerformanceFactors.csv`).
+   - Name: `student-performance-app-files`
+   - Stores the app code (`app.py`) and dataset (`StudentPerformanceFactors.csv`).
+   - EC2 instances retrieve these files at startup to deploy the application.
 
 6. **Security Groups**:
-   - **Load Balancer Security Group**: **StudentAnalytics-LB-SG**
-   - **Application Security Group**: **StudentAnalytics-App-SG**
+   - Load Balancer SG: `StudentAnalytics-LB-SG`
+   - App SG: `StudentAnalytics-App-SG`
 
 7. **Key Pair**:
-   - **Name**: **studentanalyst_keypair**
-   - Used for secure SSH access to instances when needed.
+   - Name: `studentanalyst_keypair`
 
 8. **IAM Role**:
-   - **Name**: **StudentAnalyticsRole**
-   - Provides S3 read access and SSM permissions.
+   - Name: `StudentAnalyticsRole`
+   - S3 read access and SSM permissions.
+
 
 ## Application Interface
 
-The interactive dashboard allows users to explore exam performance using various filters and visual insights. Below is a snapshot of the dashboard in action:
+The interactive Streamlit dashboard allows users to explore student exam performance through a clean, multi-tab layout:
 
 ![Student Analytics Dashboard](images/streamlit_dashboard.png)  
-*Fig 2: Student Performance Analytics Dashboard Interface*
+*Fig 2: Student Performance Analytics Dashboard Interface – Accessed via Public DNS*
 
-The dashboard includes:
-- Data upload capabilities (with default dataset loaded from S3)
-- Interactive filters for different student attributes
-- Exam score distribution visualization
-- Performance categories breakdown
-- Multiple analysis views (Overview, Performance Analysis, Factor Impact, Relationship Explorer)
+Dashboard components include:
+
+- Data Source Panel: Upload your dataset or use the S3 default.
+- Dynamic Sidebar Filters: Up to 3 filters, auto-detected from categorical variables.
+- Overview Tab: Data preview, key metrics, and missing value diagnostics.
+- Performance Analysis Tab:
+  - Score histograms and category pie chart
+  - Category-wise bar charts and boxplots
+- Factor Impact Tab:
+  - Correlation chart with exam score
+  - Scatter plots with trendline and category color
+  - Top positive/negative factor insights
+- Relationship Explorer Tab:
+  - Multi-variable scatter plots
+  - Correlation matrix heatmap
+  - Strong pairwise factor detection and interpretation
 
 ## Deployment Process
 
-### 1. Infrastructure Setup
-- **Custom VPC**: Created with CIDR block `10.0.0.0/16`.
-- **Public Subnets**: Used for the Application Load Balancer (`StudentAnalyticsLB`) to handle HTTP/HTTPS traffic.
-- **Private Subnets**: Used for the EC2 instances (`StudentAnalyticsInstance`) to ensure security and isolation.
-- **NAT Gateway**: Configured to allow outbound internet access from private subnets.
-
-### 2. Security Groups
-- **Load Balancer Security Group** (`StudentAnalytics-LB-SG`): Allows inbound HTTP traffic (port 80).
-- **Application Security Group** (`StudentAnalytics-App-SG`): Allows inbound traffic on port 8501 from the load balancer.
-
-### 3. IAM Role
-- **EC2 IAM Role** (`StudentAnalyticsRole`): Allows EC2 instances (`StudentAnalyticsInstance`) to read from the **S3 bucket** (`student-performance-app-files`).
-- **SSM Permissions**: Included for secure session management without requiring direct SSH access.
-
-### 4. Application File Preparation
-- **S3 Bucket**: Created the bucket `student-performance-app-files` and uploaded:
-  - `app.py`: Streamlit application code.
-  - `StudentPerformanceFactors.csv`: Dataset for analysis.
-
-### 5. EC2 Launch Template
-- **Launch Template Name**: **StudentAnalyticsTemplate**
-- Selected **Amazon Linux 2 AMI**, with **t3.small** instance type, associated with the **Application Security Group**.
-- **Key Pair**: Associated with **studentanalyst_keypair** for secure SSH access when needed.
-- **User Data Script**: Configured to download application files from **S3** and set up the Streamlit application in a Python virtual environment.
-
-### 6. Load Balancer and Target Group
-- **Target Group Name**: **StudentAnalyticsTargets**
-- Configured to monitor instances on port `8501` with health checks and success criteria.
-- **Application Load Balancer**: Associated with **StudentAnalyticsLB**, placed in public subnets, and configured to forward traffic to the target group.
-
-### 7. Auto Scaling Group Configuration
-- **Auto Scaling Group**: Created with the **StudentAnalyticsTemplate**.
-- Set minimum instances to 2 and maximum instances to 4.
-- Configured to scale based on CPU utilization, with health monitoring via the target group.
+1. Create VPC and subnets (`10.0.0.0/16`)
+2. Configure public subnets for the ALB and private subnets for EC2
+3. Create S3 bucket: `student-performance-app-files`
+4. Upload app.py and dataset to S3
+5. Launch EC2 using a template (`StudentAnalyticsTemplate`) with user data to pull app files and run Streamlit
+6. Create ALB (`StudentAnalyticsLB`) and target group (`StudentAnalyticsTargets`) on port 8501
+7. Set up Auto Scaling Group (`StudentAnalyticsASG`) for 2–4 instances
 
 ## Auto Scaling and High Availability
 
-The system is designed to handle traffic spikes and ensure high availability using the following configurations:
+- Minimum: 2 instances
+- Maximum: 4 instances
+- Scaling based on 70% CPU threshold
+- Health checks via ALB ensure only healthy instances serve traffic
 
-- **Minimum Instances**: The Auto Scaling Group (`StudentAnalyticsASG`) maintains at least 2 instances (`StudentAnalyticsInstance`) to ensure redundancy.
-- **Maximum Instances**: The system can scale up to 4 instances during high traffic periods.
-- **Scaling Policy**: Instances are added or removed based on CPU utilization, with a target threshold of 70%.
-- **Health Monitoring**: The **Application Load Balancer** (`StudentAnalyticsLB`) performs health checks on instances to ensure only healthy instances receive traffic.
+## Exploratory Data Analysis (Jupyter Notebook)
 
-## Exploratory Data Analysis
+- Summary stats, missing data, and outlier detection
+- Histograms, boxplots, scatter plots, and heatmaps
+- Feature correlations and pairplots
+- Performance distribution visualized with KDE
 
-The project includes a Jupyter Notebook (`notebooks/exploratory_analysis.ipynb`) for performing exploratory data analysis (EDA) on the student performance dataset. Key steps include:
+## How to Run the app Locally
 
-1. **Data Overview**:
-   - Display dataset structure using `data.info()` and `data.describe()`.
-   - Identify missing values with `data.isnull().sum()`.
+```bash
+git clone https://github.com/yourusername/Scalable-AWS-System-for-Student-Performance-Analysis.git
+cd Scalable-AWS-System-for-Student-Performance-Analysis
+pip install -r requirements.txt
+streamlit run app/app.py
 
-2. **Numerical Variable Analysis**:
-   - Generate a correlation heatmap for numerical variables.
-   - Create scatter plots to visualize relationships between numerical variables and `Exam_Score`.
-
-3. **Categorical Variable Analysis**:
-   - Use boxplots to analyze the impact of categorical variables (e.g., `Parental_Involvement`) on `Exam_Score`.
-   - Generate count plots for categorical variables to understand their distributions.
-
-4. **Missing Data Analysis**:
-   - Visualize missing data using a heatmap.
-
-5. **Feature Relationships**:
-   - Create pair plots to explore relationships between numerical variables, grouped by categorical variables (e.g., `Gender`).
-
-6. **Outlier Detection**:
-   - Use boxplots to detect outliers in numerical variables (e.g., `Hours_Studied`).
-
-7. **Grade Distribution**:
-   - Visualize the distribution of `Exam_Score` using a histogram with a KDE overlay.
-
-## How to Run Locally
-
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/yourusername/Scalable-AWS-System-for-Student-Performance-Analysis.git
-    cd Scalable-AWS-System-for-Student-Performance-Analysis
-    ```
-
-2. Install the required dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-3. Run the Streamlit application:
-    ```bash
-    streamlit run app/app.py
-    ```
 
 4. Open the application in your browser at [http://localhost:8501](http://localhost:8501).
 
